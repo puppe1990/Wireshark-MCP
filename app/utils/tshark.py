@@ -25,26 +25,19 @@ def _kill_process_tree(pid: int):
     """
 
     if sys.platform == "win32":
-
         # /T = kill the whole process tree, /F = force
-        subprocess.run(
-            ["taskkill", "/PID", str(pid), "/T", "/F"],
-            capture_output=True
-        )
+        subprocess.run(["taskkill", "/PID", str(pid), "/T", "/F"], capture_output=True)
 
     else:
-
         import os
         import signal
 
         try:
-
             # Requires the child to have been started in its own
             # process group (see start_new_session=True below).
             os.killpg(os.getpgid(pid), signal.SIGKILL)
 
         except ProcessLookupError:
-
             pass
 
 
@@ -58,26 +51,17 @@ def _run_subprocess(cmd: list, timeout: int):
     popen_kwargs = {}
 
     if sys.platform != "win32":
-
         # Puts the child in its own process group so we can kill
         # the whole tree (tshark + any children) with os.killpg on
         # timeout, mirroring the taskkill /T behavior on Windows.
         popen_kwargs["start_new_session"] = True
 
-    process = subprocess.Popen(
-        cmd,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True,
-        **popen_kwargs
-    )
+    process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, **popen_kwargs)
 
     try:
-
         stdout, stderr = process.communicate(timeout=timeout)
 
     except subprocess.TimeoutExpired as e:
-
         # Kill the FULL process tree (not just `process`) so any
         # child (e.g. dumpcap.exe) releases its lock on the output
         # file before we raise - otherwise the temp pcap can't be
@@ -91,9 +75,7 @@ def _run_subprocess(cmd: list, timeout: int):
         except Exception:
             pass
 
-        raise RuntimeError(
-            f"tshark did not finish within {timeout}s: {' '.join(cmd)}"
-        ) from e
+        raise RuntimeError(f"tshark did not finish within {timeout}s: {' '.join(cmd)}") from e
 
     if process.returncode != 0:
         raise RuntimeError(stderr)

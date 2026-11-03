@@ -1,30 +1,24 @@
 from fastmcp import FastMCP
 
-from app.tools.discovery import discover_protocols
-from app.tools.packets import query_packets
-from app.tools.conversations import analyze_conversations
-from app.tools.streams import inspect_stream
-from app.tools.statistics import protocol_statistics
-from app.tools.behavior import behavioral_analysis
-from app.tools.live_capture import start_live_capture, get_capture_status
-from app.tools.interfaces import list_interfaces as list_interfaces_impl
-from app.tools.save_capture import save_capture
-from app.tools.discard_capture import discard_capture
-from app.utils.cleanup import sweep_stale_temp_captures
-
-from app.resources.references import NETWORK_REFERENCE
 from app.prompts.prompts import SYSTEM_PROMPT
-
+from app.resources.references import NETWORK_REFERENCE
+from app.tools.behavior import behavioral_analysis
+from app.tools.conversations import analyze_conversations
+from app.tools.discard_capture import discard_capture
+from app.tools.discovery import discover_protocols
+from app.tools.interfaces import list_interfaces as list_interfaces_impl
+from app.tools.live_capture import get_capture_status, start_live_capture
+from app.tools.packets import query_packets
+from app.tools.save_capture import save_capture
+from app.tools.statistics import protocol_statistics
+from app.tools.streams import inspect_stream
+from app.utils.cleanup import sweep_stale_temp_captures
 
 mcp = FastMCP("Wireshark MCP")
 
 
 @mcp.tool()
-async def get_protocols(
-    pcap_path: str,
-    offset: int = 0,
-    max_chars: int = 200_000
-):
+async def get_protocols(pcap_path: str, offset: int = 0, max_chars: int = 200_000):
     """
     Discover which network protocols appear in a packet capture file
     and how many frames/bytes each protocol accounts for.
@@ -49,12 +43,7 @@ async def get_protocols(
 
 
 @mcp.tool()
-async def search_packets(
-    pcap_path: str,
-    fields: list,
-    display_filter: str = None,
-    limit: int = 100
-):
+async def search_packets(pcap_path: str, fields: list, display_filter: str = None, limit: int = 100):
     """
     Query specific fields from packets in a capture file, optionally
     filtered with a Wireshark display filter (e.g. "http",
@@ -71,21 +60,11 @@ async def search_packets(
         display_filter: Optional Wireshark display filter string.
         limit: Max number of matching rows to return.
     """
-    return await query_packets(
-        pcap_path,
-        fields,
-        display_filter,
-        limit
-    )
+    return await query_packets(pcap_path, fields, display_filter, limit)
 
 
 @mcp.tool()
-async def get_conversations(
-    pcap_path: str,
-    conversation_type: str = "ip",
-    offset: int = 0,
-    max_chars: int = 200_000
-):
+async def get_conversations(pcap_path: str, conversation_type: str = "ip", offset: int = 0, max_chars: int = 200_000):
     """
     Summarize conversations (talker pairs) in a capture file, e.g.
     which IP addresses or TCP endpoints talked to each other and how
@@ -104,22 +83,11 @@ async def get_conversations(
         offset: Character offset to resume from (for pagination).
         max_chars: Max characters to return in this call.
     """
-    return await analyze_conversations(
-        pcap_path,
-        conversation_type,
-        offset,
-        max_chars
-    )
+    return await analyze_conversations(pcap_path, conversation_type, offset, max_chars)
 
 
 @mcp.tool()
-async def follow_stream(
-    pcap_path: str,
-    stream_type: str,
-    stream_id: int,
-    offset: int = 0,
-    max_chars: int = 300_000
-):
+async def follow_stream(pcap_path: str, stream_type: str, stream_id: int, offset: int = 0, max_chars: int = 300_000):
     """
     Reassemble and return the raw application-layer content of a
     single TCP/UDP stream (e.g. an HTTP request/response, an FTP
@@ -140,21 +108,11 @@ async def follow_stream(
         offset: Character offset to resume from (for pagination).
         max_chars: Max characters to return in this call.
     """
-    return await inspect_stream(
-        pcap_path,
-        stream_type,
-        stream_id,
-        offset,
-        max_chars
-    )
+    return await inspect_stream(pcap_path, stream_type, stream_id, offset, max_chars)
 
 
 @mcp.tool()
-async def get_statistics(
-    pcap_path: str,
-    offset: int = 0,
-    max_chars: int = 200_000
-):
+async def get_statistics(pcap_path: str, offset: int = 0, max_chars: int = 200_000):
     """
     Compute overall protocol statistics for a capture file (packet
     counts, byte counts, protocol hierarchy breakdown).
@@ -208,10 +166,7 @@ async def list_interfaces():
 
 @mcp.tool()
 async def capture_live(
-    interface: str = None,
-    duration: int = 10,
-    capture_filter: str = None,
-    save_capture: bool = False
+    interface: str = None, duration: int = 10, capture_filter: str = None, save_capture: bool = False
 ):
     """
     Start a live packet capture on an interface of the machine running
@@ -244,12 +199,7 @@ async def capture_live(
             permanently once it completes, skipping the
             save/discard prompt.
     """
-    return await start_live_capture(
-        interface,
-        duration,
-        capture_filter,
-        save_capture
-    )
+    return await start_live_capture(interface, duration, capture_filter, save_capture)
 
 
 @mcp.tool()
@@ -277,9 +227,7 @@ async def check_capture_status(job_id: str, wait_seconds: int = 25):
 
 
 @mcp.tool()
-async def save_live_capture(
-    temporary_capture: str
-):
+async def save_live_capture(temporary_capture: str):
     """
     Permanently save a temporary capture file (returned once a
     capture_live job completes) so it survives the auto-discard
@@ -289,15 +237,11 @@ async def save_live_capture(
         temporary_capture: The exact "temporary_capture" path
             returned in the completed capture job's result.
     """
-    return await save_capture(
-        temporary_capture
-    )
+    return await save_capture(temporary_capture)
 
 
 @mcp.tool()
-async def discard_live_capture(
-    temporary_capture: str
-):
+async def discard_live_capture(temporary_capture: str):
     """
     Immediately delete a temporary capture file (returned once a
     capture_live job completes) instead of waiting for the

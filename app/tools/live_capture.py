@@ -4,11 +4,10 @@ import os
 import re
 from datetime import datetime
 
-from app.utils.tshark import run_tshark
-from app.utils.cleanup import schedule_cleanup, cancel_cleanup
-from app.utils.capture_jobs import create_job, update_job, get_job
 from app.config import settings
-
+from app.utils.capture_jobs import create_job, get_job, update_job
+from app.utils.cleanup import cancel_cleanup, schedule_cleanup
+from app.utils.tshark import run_tshark
 
 # =====================================================
 # PUBLIC ENTRY POINT #1: start_live_capture
@@ -23,32 +22,25 @@ from app.config import settings
 # `duration` is.
 # =====================================================
 
+
 async def start_live_capture(
-    interface: str = None,
-    duration: int = 10,
-    capture_filter: str = None,
-    save_capture: bool = False
+    interface: str = None, duration: int = 10, capture_filter: str = None, save_capture: bool = False
 ):
 
     # ---------------------------------------------------
     # Get Available Interfaces
     # ---------------------------------------------------
 
-    list_cmd = [
-        settings.TSHARK_PATH,
-        "-D"
-    ]
+    list_cmd = [settings.TSHARK_PATH, "-D"]
 
     interface_output = await run_tshark(list_cmd)
 
     available_interfaces = []
 
     for line in interface_output.splitlines():
-
         line = line.strip()
 
         if line:
-
             available_interfaces.append(line)
 
     # ---------------------------------------------------
@@ -56,17 +48,10 @@ async def start_live_capture(
     # ---------------------------------------------------
 
     if not interface:
-
         return {
-
             "status": "user_input_required",
-
-            "message": (
-                "Multiple interfaces are available. "
-                "Select one for live capture."
-            ),
-
-            "available_interfaces": available_interfaces
+            "message": ("Multiple interfaces are available. Select one for live capture."),
+            "available_interfaces": available_interfaces,
         }
 
     # ---------------------------------------------------
@@ -78,45 +63,30 @@ async def start_live_capture(
     partial_match = None
 
     for item in available_interfaces:
-
         idx_part, _, rest = item.partition(".")
         idx_part = idx_part.strip()
 
-        desc_match = re.search(r'\(([^)]*)\)\s*$', rest)
-        description = (
-            desc_match.group(1).strip()
-            if desc_match
-            else rest.strip()
-        )
+        desc_match = re.search(r"\(([^)]*)\)\s*$", rest)
+        description = desc_match.group(1).strip() if desc_match else rest.strip()
 
         if interface == idx_part:
-
             exact_match = item
             break
 
         if interface.lower() == description.lower():
-
             exact_match = item
             break
 
-        if (
-            partial_match is None
-            and interface.lower() in description.lower()
-        ):
-
+        if partial_match is None and interface.lower() in description.lower():
             partial_match = item
 
     matched_interface = exact_match or partial_match
 
     if not matched_interface:
-
         return {
-
             "status": "invalid_interface",
-
             "message": "Invalid interface selected.",
-
-            "available_interfaces": available_interfaces
+            "available_interfaces": available_interfaces,
         }
 
     interface_id = matched_interface.split(".", 1)[0].strip()
@@ -133,14 +103,7 @@ async def start_live_capture(
 
     job_id = create_job()
 
-    update_job(
-        job_id,
-        status="capturing",
-        progress={
-            "elapsed_seconds": 0,
-            "total_seconds": duration
-        }
-    )
+    update_job(job_id, status="capturing", progress={"elapsed_seconds": 0, "total_seconds": duration})
 
     asyncio.create_task(
         _run_capture_job(
@@ -149,27 +112,22 @@ async def start_live_capture(
             interface_id=interface_id,
             duration=duration,
             capture_filter=capture_filter,
-            save_capture=save_capture
+            save_capture=save_capture,
         )
     )
 
     return {
-
         "status": "capture_started",
-
         "job_id": job_id,
-
         "interface": matched_interface,
-
         "duration": duration,
-
         "message": (
             f"Capture started in the background on "
             f"'{matched_interface}' for {duration} seconds. "
             "Poll get_capture_status with this job_id to check "
             "progress and retrieve results - do not wait on this "
             "call, it already returned."
-        )
+        ),
     }
 
 
@@ -183,8 +141,8 @@ async def start_live_capture(
 # long the underlying capture takes in total.
 # =====================================================
 
-async def get_capture_status(job_id: str, wait_seconds: int = 25):
 
+async def get_capture_status(job_id: str, wait_seconds: int = 25):
     """
     Bounded long-poll: if the job is still running, wait up to
     `wait_seconds` (checking every 2s) for it to finish before
@@ -199,25 +157,16 @@ async def get_capture_status(job_id: str, wait_seconds: int = 25):
     waited = 0
 
     while True:
-
         job = get_job(job_id)
 
         if job is None:
-
-            return {
-
-                "status": "not_found",
-
-                "message": f"No capture job found with id '{job_id}'."
-            }
+            return {"status": "not_found", "message": f"No capture job found with id '{job_id}'."}
 
         # Stop waiting once the job leaves the "in progress" states
         if job["status"] not in ("pending", "capturing", "analyzing"):
-
             return job
 
         if waited >= wait_seconds:
-
             return job
 
         await asyncio.sleep(poll_interval)
@@ -236,42 +185,19 @@ async def get_capture_status(job_id: str, wait_seconds: int = 25):
 # into the job store, which get_capture_status reads from.
 # =====================================================
 
+
 async def _run_capture_job(
-    job_id: str,
-    matched_interface: str,
-    interface_id: str,
-    duration: int,
-    capture_filter: str,
-    save_capture: bool
+    job_id: str, matched_interface: str, interface_id: str, duration: int, capture_filter: str, save_capture: bool
 ):
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
-    temp_pcap = os.path.join(
-        settings.CAPTURE_DIR,
-        f"temp_capture_{timestamp}.pcapng"
-    )
+    temp_pcap = os.path.join(settings.CAPTURE_DIR, f"temp_capture_{timestamp}.pcapng")
 
-    capture_cmd = [
-
-        settings.TSHARK_PATH,
-
-        "-i",
-        interface_id,
-
-        "-a",
-        f"duration:{duration}",
-
-        "-w",
-        temp_pcap
-    ]
+    capture_cmd = [settings.TSHARK_PATH, "-i", interface_id, "-a", f"duration:{duration}", "-w", temp_pcap]
 
     if capture_filter:
-
-        capture_cmd.extend([
-            "-f",
-            capture_filter
-        ])
+        capture_cmd.extend(["-f", capture_filter])
 
     capture_timeout = duration + settings.CAPTURE_TIMEOUT_BUFFER
 
@@ -280,61 +206,32 @@ async def _run_capture_job(
     # -------------------------------------------------
 
     try:
-
         await run_tshark(capture_cmd, timeout=capture_timeout)
 
     except RuntimeError as e:
-
         if not os.path.exists(temp_pcap):
-
             update_job(
-                job_id,
-                status="error",
-                error=(
-                    f"Live capture on interface '{matched_interface}' "
-                    f"did not complete: {e}"
-                )
+                job_id, status="error", error=(f"Live capture on interface '{matched_interface}' did not complete: {e}")
             )
 
             return
 
     # Arm cleanup immediately, same reasoning as before: protects
     # against orphaned files if anything below fails.
-    schedule_cleanup(
-        temp_pcap,
-        settings.CAPTURE_CLEANUP_TIMEOUT
-    )
+    schedule_cleanup(temp_pcap, settings.CAPTURE_CLEANUP_TIMEOUT)
 
-    update_job(
-        job_id,
-        status="analyzing",
-        progress={
-            "elapsed_seconds": duration,
-            "total_seconds": duration
-        }
-    )
+    update_job(job_id, status="analyzing", progress={"elapsed_seconds": duration, "total_seconds": duration})
 
     # -------------------------------------------------
     # Analyze Capture
     # -------------------------------------------------
 
-    analysis_cmd = [
-
-        settings.TSHARK_PATH,
-
-        "-r",
-        temp_pcap,
-
-        "-T",
-        "json"
-    ]
+    analysis_cmd = [settings.TSHARK_PATH, "-r", temp_pcap, "-T", "json"]
 
     try:
-
         output = await run_tshark(analysis_cmd)
 
     except RuntimeError as e:
-
         update_job(
             job_id,
             status="error",
@@ -343,28 +240,20 @@ async def _run_capture_job(
                 f"(tshark timed out or failed while reading the "
                 f"capture file): {e}"
             ),
-            result={
-                "temporary_capture": temp_pcap,
-                "cleanup_timeout_seconds": settings.CAPTURE_CLEANUP_TIMEOUT
-            }
+            result={"temporary_capture": temp_pcap, "cleanup_timeout_seconds": settings.CAPTURE_CLEANUP_TIMEOUT},
         )
 
         return
 
     try:
-
         packets = json.loads(output)
 
     except Exception as e:
-
         update_job(
             job_id,
             status="error",
             error=f"Failed to parse tshark JSON output: {e}",
-            result={
-                "temporary_capture": temp_pcap,
-                "cleanup_timeout_seconds": settings.CAPTURE_CLEANUP_TIMEOUT
-            }
+            result={"temporary_capture": temp_pcap, "cleanup_timeout_seconds": settings.CAPTURE_CLEANUP_TIMEOUT},
         )
 
         return
@@ -380,7 +269,6 @@ async def _run_capture_job(
     total_bytes = 0
 
     for packet in packets:
-
         total_packets += 1
 
         layers = packet.get("_source", {}).get("layers", {})
@@ -388,23 +276,19 @@ async def _run_capture_job(
         frame_layer = layers.get("frame", {})
 
         try:
-
             frame_len = int(frame_layer.get("frame.len", 0))
 
             total_bytes += frame_len
 
         except Exception:
-
             pass
 
         frame_protocols = frame_layer.get("frame.protocols", "")
 
         for proto in frame_protocols.split(":"):
-
             proto = proto.lower().strip()
 
             if proto:
-
                 protocol_counter[proto] = protocol_counter.get(proto, 0) + 1
 
         ip_layer = layers.get("ip")
@@ -414,17 +298,14 @@ async def _run_capture_job(
         dst = None
 
         if ip_layer:
-
             src = ip_layer.get("ip.src")
             dst = ip_layer.get("ip.dst")
 
         elif ipv6_layer:
-
             src = ipv6_layer.get("ipv6.src")
             dst = ipv6_layer.get("ipv6.dst")
 
         if src and dst:
-
             key = f"{src} -> {dst}"
 
             conversations[key] = conversations.get(key, 0) + 1
@@ -432,33 +313,20 @@ async def _run_capture_job(
             endpoints[src] = endpoints.get(src, 0) + 1
             endpoints[dst] = endpoints.get(dst, 0) + 1
 
-    top_conversations = sorted(
-        conversations.items(), key=lambda x: x[1], reverse=True
-    )[:10]
+    top_conversations = sorted(conversations.items(), key=lambda x: x[1], reverse=True)[:10]
 
-    top_endpoints = sorted(
-        endpoints.items(), key=lambda x: x[1], reverse=True
-    )[:10]
+    top_endpoints = sorted(endpoints.items(), key=lambda x: x[1], reverse=True)[:10]
 
     analysis_metadata = {
-
         "unique_protocols": list(protocol_counter.keys()),
-
         "protocol_counts": protocol_counter,
-
         "conversation_count": len(conversations),
-
         "endpoint_count": len(endpoints),
-
         "top_conversations": top_conversations,
-
         "top_endpoints": top_endpoints,
-
         "total_packets": total_packets,
-
         "total_bytes": total_bytes,
-
-        "capture_duration": duration
+        "capture_duration": duration,
     }
 
     # -------------------------------------------------
@@ -466,11 +334,7 @@ async def _run_capture_job(
     # -------------------------------------------------
 
     if save_capture:
-
-        final_pcap = os.path.join(
-            settings.CAPTURE_DIR,
-            f"live_capture_{timestamp}.pcapng"
-        )
+        final_pcap = os.path.join(settings.CAPTURE_DIR, f"live_capture_{timestamp}.pcapng")
 
         cancel_cleanup(temp_pcap)
 
@@ -480,17 +344,12 @@ async def _run_capture_job(
             job_id,
             status="completed",
             result={
-
                 "status": "success",
-
                 "capture_saved": True,
-
                 "saved_capture": final_pcap,
-
                 "interface": matched_interface,
-
-                "analysis_metadata": analysis_metadata
-            }
+                "analysis_metadata": analysis_metadata,
+            },
         )
 
         return
@@ -503,9 +362,7 @@ async def _run_capture_job(
         job_id,
         status="user_input_required",
         result={
-
             "status": "user_input_required",
-
             "message": (
                 "Live capture analysis completed. "
                 "Do you want to save this capture? "
@@ -513,26 +370,19 @@ async def _run_capture_job(
                 f"{settings.CAPTURE_CLEANUP_TIMEOUT} seconds, "
                 "it will be automatically deleted."
             ),
-
             "capture_saved": False,
-
             "temporary_capture": temp_pcap,
-
             "interface": matched_interface,
-
             "analysis_metadata": analysis_metadata,
-
             "cleanup_timeout_seconds": settings.CAPTURE_CLEANUP_TIMEOUT,
-
             "save_options": [
-
                 "yes",
                 "no",
                 "discard",
                 "dig deeper",
                 "analyze further",
                 "remove this capture",
-                "delete this capture"
-            ]
-        }
+                "delete this capture",
+            ],
+        },
     )

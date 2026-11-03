@@ -22,20 +22,13 @@ def create_job():
     job_id = str(uuid.uuid4())
 
     _jobs[job_id] = {
-
         "job_id": job_id,
-
         "status": "pending",  # pending -> capturing -> analyzing -> completed | error | user_input_required
-
         "created_at": datetime.now().isoformat(),
-
         "updated_at": datetime.now().isoformat(),
-
         "progress": None,
-
         "result": None,
-
-        "error": None
+        "error": None,
     }
 
     return job_id

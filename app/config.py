@@ -9,7 +9,6 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 
 class Settings(BaseSettings):
-
     # Wireshark / Tshark
     TSHARK_PATH: str = "tshark"
 
@@ -39,36 +38,18 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = "INFO"
 
     # Storage
-    CAPTURE_DIR: str = str(
-        BASE_DIR / "captures"
-    )
+    CAPTURE_DIR: str = str(BASE_DIR / "captures")
 
-    LOG_DIR: str = str(
-        BASE_DIR / "logs"
-    )
+    LOG_DIR: str = str(BASE_DIR / "logs")
 
     # Environment loading
-    model_config = SettingsConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
-        extra="ignore"
-    )
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
 
 settings = Settings()
 
 
 # Auto-create directories
-Path(
-    settings.CAPTURE_DIR
-).mkdir(
-    parents=True,
-    exist_ok=True
-)
+Path(settings.CAPTURE_DIR).mkdir(parents=True, exist_ok=True)
 
-Path(
-    settings.LOG_DIR
-).mkdir(
-    parents=True,
-    exist_ok=True
-)
+Path(settings.LOG_DIR).mkdir(parents=True, exist_ok=True)
