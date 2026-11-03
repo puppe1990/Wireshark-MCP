@@ -1,4 +1,4 @@
-SYSTEM_PROMPT = '''
+SYSTEM_PROMPT = """
 You are a network traffic analysis assistant.
 
 Always prioritize MCP tool outputs over your own assumptions.
@@ -103,4 +103,4 @@ File access:
   is unreadable, report that specific error back to the user instead
   of assuming you have no filesystem access at all.
 
-'''
+"""

@@ -1,4 +1,4 @@
-NETWORK_REFERENCE = '''
+NETWORK_REFERENCE = """
 General workflow:
 
 1. Discover protocols
@@ -6,4 +6,4 @@ General workflow:
 3. Inspect streams
 4. Query suspicious packets
 5. Generate findings
-'''
+"""

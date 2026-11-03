@@ -1,38 +1,18 @@
-from app.utils.tshark import run_tshark
 from app.config import settings
+from app.utils.tshark import run_tshark
 
 
-async def query_packets(
-    pcap_path: str,
-    fields: list,
-    display_filter: str = None,
-    limit: int = 100
-):
+async def query_packets(pcap_path: str, fields: list, display_filter: str = None, limit: int = 100):
 
-    cmd = [
-        settings.TSHARK_PATH,
-        "-r",
-        pcap_path,
-        "-T",
-        "fields"
-    ]
+    cmd = [settings.TSHARK_PATH, "-r", pcap_path, "-T", "fields"]
 
     for field in fields:
-        cmd.extend([
-            "-e",
-            field
-        ])
+        cmd.extend(["-e", field])
 
     if display_filter:
-        cmd.extend([
-            "-Y",
-            display_filter
-        ])
+        cmd.extend(["-Y", display_filter])
 
-    cmd.extend([
-        "-E",
-        "separator=|"
-    ])
+    cmd.extend(["-E", "separator=|"])
 
     output = await run_tshark(cmd)
 
@@ -44,7 +24,4 @@ async def query_packets(
         if len(rows) >= limit:
             break
 
-    return {
-        "fields": fields,
-        "rows": rows
-    }
+    return {"fields": fields, "rows": rows}

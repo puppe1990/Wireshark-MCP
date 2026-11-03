@@ -1,5 +1,7 @@
 # Wireshark MCP Server
 
+Fork pessoal (`puppe1990/Wireshark-MCP`) do projeto original (`NathcorpTraining/Wireshark-MCP`), com gate de qualidade: ruff (lint + formatação), pytest, pre-commit e CI no GitHub Actions.
+
 
 
 ## Overview
@@ -118,6 +120,15 @@ Verify TShark installation:
 tshark -v
 ```
 
+On macOS, install the official app and grant capture permissions once:
+
+```bash
+brew install --cask wireshark-app   # or the .dmg from wireshark.org
+sudo installer -pkg "/Applications/Wireshark.app/Contents/Resources/Extras/Install ChmodBPF.pkg" -target /
+```
+
+Without **ChmodBPF**, live capture fails with `Permission denied` on `/dev/bpf*` — file analysis works regardless.
+
 \---
 
 ## Installation
@@ -125,15 +136,15 @@ tshark -v
 Clone the repository:
 
 ```bash
-git clone https://github.com/NathcorpTraining/Wireshark-MCP.git
+git clone https://github.com/puppe1990/Wireshark-MCP.git
 
-cd Wireshark-mcp-server
+cd Wireshark-MCP
 ```
 
-Create a virtual environment:
+Create a virtual environment (the pre-commit hooks expect it at `.venv`):
 
 ```bash
-python -m venv venv
+python -m venv .venv
 ```
 
 Activate it:
@@ -141,19 +152,20 @@ Activate it:
 Windows:
 
 ```bash
-venv\\Scripts\\activate
+.venv\\Scripts\\activate
 ```
 
 Linux/macOS:
 
 ```bash
-source venv/bin/activate
+source .venv/bin/activate
 ```
 
-Install dependencies:
+Install dependencies (runtime + dev tooling):
 
 ```bash
-pip install -r requirements.txt
+pip install -r requirements.txt -r requirements-dev.txt
+pre-commit install
 ```
 
 \---
@@ -195,6 +207,22 @@ Server endpoint:
 ```text
 http://localhost:8080
 ```
+
+## Qualidade de código
+
+Gate local num comando (formatação + lint + testes):
+
+```bash
+sh scripts/verify.sh
+```
+
+| Ferramenta | Comando | Papel |
+| --- | --- | --- |
+| ruff format | `.venv/bin/ruff format .` | formatação (o "prettier" do Python) |
+| ruff check | `.venv/bin/ruff check --fix .` | lint (imports, erros, estilo) |
+| pytest | `.venv/bin/python -m pytest -q` | suíte em `tests/` (asyncio via pytest-asyncio) |
+
+O **pre-commit** (`.pre-commit-config.yaml`) roda `ruff check`, `ruff format` e a suíte inteira a cada commit — instalado uma vez com `pre-commit install`. A **CI** (`.github/workflows/ci.yml`) roda exatamente os mesmos passos em push/PR para a `main`, no Python 3.12.
 
 \---
 
